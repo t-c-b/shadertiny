@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <canvas id='render' width="640" height="480"></canvas>
+  <textarea id='frag_src', name='frag_src'>
+    void main() {
+      gl_FragColor = vec4(0,1,0,1);
+    }
+  </textarea>
+  <button id='frag_submit'>Compile Shader</button>
+  <script>
+    var canvas = document.getElementById('render');
+    var button = document.getElementById('frag_submit');
+    var text = document.getElementById('frag_src');
+
+    button.addEventListener('click', compileFrag);
+    let fShader;
+    let program;
+
+
+    var gl = canvas.getContext('webgl');
+
+    const vertex_shader_src = `
+    attribute vec2 vertexPos;
+
+    void main(){
+      gl_Position = vec4(vertexPos, 0, 1.0);
+      //frag_coord = vertexPos/2.f + vec2(1.f,1.f)
+    }
+    `;
+    let start;
+    var vShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vShader, vertex_shader_src);
+    gl.compileShader(vShader);
+
+    function compileFrag() {
+      fShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fShader, text.value);
+      gl.compileShader(fShader);
+      
+      start = performance.now();
+
+      program = gl.createProgram();
+      gl.attachShader(program, vShader);
+      gl.attachShader(program, fShader);
+      gl.linkProgram(program);
+
+      //Check for failure after link
+      if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(program));
+        console.error(gl.getShaderInfoLog(vShader));
+        console.error(gl.getShaderInfoLog(fShader));
+      }
+
+      gl.useProgram(program);
+
+      //gl.uniform2f(640, 480, gl.getUniformLocation(program, 'canvasDim'));
+    }
+
+    compileFrag();
+
+    var buf = gl.createBuffer();
+
+    var verts = new Float32Array([-1,-1, -1,3, 3,-1]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    var coord = gl.getAttribLocation(program, "vertexPos");
+    gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(coord);
+
+    gl.clearColor(1, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    
+    function draw(timestamp) {
+      //gl.uniform1f((timestamp-start)/1000, gl.getUniformLocation(program, 'time'));
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      window.requestAnimationFrame(draw);
+    }
+    window.requestAnimationFrame(draw);
+  </script>
+</html>
